@@ -1,0 +1,70 @@
+---
+title: "Initial"
+author: "Josef Klafka and Daniel Yurovsky"
+date: "10/30/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+require(tidyverse)
+require(tidytext)
+require(here)
+require(feather)
+require(childesr)
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+Directly port over the LF-CBL from McCauley & Christiansen (2019), using it on POS tags instead of words? What's the hypothesis in this case? (syntactic productivity is limited early on and increases across development)
+```{r input}
+prov <- get_utterances(corpus = "Providence")
+
+# get parent input bigram frames
+prov %>% 
+  filter(speaker_role != "Target_Child") %>%
+  mutate(utterance_id = 1:n()) %>%
+  unnest_tokens(bigram, stem, token = "ngrams", n = 2) %>%
+  group_by(utterance_id) %>%
+  ungroup() %>%
+  unnest_tokens(word, bigram) %>%
+  group_by(utterance_id, bigram) %>%
+  mutate(bigram_index = 1:n()) %>%
+  group_by(bigram_index) %>%
+  count(word) 
+  
+```
+
+```{r non pos-tagged utterances in CHILDES}
+# almost every corpus in English is POS-tagged, but only some of the Spanish ones are
+eng <- get_utterances(collection = "Eng-NA")
+# spanish <- get_utterances(collection = "Spanish") 
+
+neh <- eng %>% 
+  group_by(target_child_age) %>% 
+  count(part_of_speech) %>% 
+  mutate(n = n/sum(n)) %>% 
+  filter(part_of_speech == "")
+
+neh %>% 
+  ggplot(aes(x = target_child_age, y = n)) + 
+    geom_point() + 
+    geom_smooth(se=F)
+
+# look at the diversity of English POS tags
+# 55 pos categories, with a good mix of diff categories
+eng_pos <- eng %>% 
+  unnest_tokens(pos, part_of_speech) %>% 
+  count(pos) 
+
+require(wordcloud)
+# nouns and verbs are the most common, followed by articles, adverbs, prepositions, speech particles and pronouns
+wordcloud(words = eng_pos$pos, freq = eng_pos$n, max.words = 200, random.order = T)
+```
+
+
+
+
+
+
+
